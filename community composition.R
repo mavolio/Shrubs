@@ -50,18 +50,23 @@ plotslist<-pre%>%
 #   filter(Lifeform!="Drop")%>%
 #   group_by(Trasect, Frame) %>% 
 #   summarize(totcov=sum(Cover_class))
-  
-pre_class<-pre %>% 
-  left_join(lf) %>% 
-  filter(Lifeform!="Drop")%>%
-  group_by(Trasect, Frame, Lifeform) %>% 
-  summarize(cov=sum(Cover_class)) %>% 
-  left_join(pre_class_total) %>% 
-  mutate(relcov=cov/totcov) %>% 
-  mutate(class=ifelse(Lifeform=="Woody"&relcov>0.55, 1, 0))%>%
-  filter(class==1)%>%
-  select(Trasect, Frame, class) %>% 
-  unique()
+#   
+# pre_class<-pre %>% 
+#   left_join(lf) %>% 
+#   filter(Lifeform!="Drop")%>%
+#   group_by(Trasect, Frame, Lifeform) %>% 
+#   summarize(cov=sum(Cover_class)) %>% 
+#   left_join(pre_class_total) %>% 
+#   mutate(relcov=cov/totcov) %>% 
+#   mutate(class=ifelse(Lifeform=="Woody"&relcov>0.55, 1, 0))%>%
+#   filter(class==1)%>%
+#   select(Trasect, Frame, class) %>% 
+#   unique()
+
+cover_class_key <- data.frame(
+  Cover_class = 1:7,
+  abs_cover = c(0.5, 3, 15, 37.5, 62.5, 85, 97.5)
+)
 
 pre_class<-pre %>%  ## I changed this to actual covers because the cover classes are not linear so calculating relcov with them doesn't work
   left_join(lf) %>% 
@@ -71,12 +76,17 @@ pre_class<-pre %>%  ## I changed this to actual covers because the cover classes
   left_join(cover_class_key, by="Cover_class") %>%
   summarize(abs_cover=sum(abs_cover)) %>% 
   ungroup() %>%
-  group_by(Transect, Frame) %>%
-  mutate(relcov=abs_cover/sum(abs_cover)) %>% 
-  mutate(class=ifelse(Lifeform=="Woody"&relcov>0.55, 1, 0))%>%
+  #group_by(Transect, Frame) %>%
+  #mutate(relcov=abs_cover/sum(abs_cover)) %>% 
+  mutate(class=ifelse(Lifeform=="Woody"&abs_cover>50, 1, 0))%>%
   filter(class==1)%>%
   select(Transect, Frame, class) %>% 
   unique()
+
+ggplot(data=subset(pre_class, Lifeform=="Woody"), aes(x=Frame, y=abs_cover))+
+  geom_point()+
+  geom_line()+
+  facet_wrap(~Transect)
 
 testing <- pre_class %>%
   spread(key=Lifeform, value=abs_cover) %>%
@@ -105,7 +115,7 @@ summary(aov(Abundance~category, data = bg))#no sig diff
 ###
 {
 
-species_key <- read.csv("..//KNZ_species_list.csv") %>%
+species_key <- read.csv("//KNZ_species_list.csv") %>%
     mutate(Genus_Species = paste(genus, species, sep="_")) %>%
     bind_rows(data.frame(code=551, gen="quincu", spec="lobata", genus="quincula", species="lobata", family="solanaceae",
                          growthform="p", lifeform="f",origin="n", photo="unkn", Genus_Species="quincula_lobata")) %>%
@@ -115,10 +125,7 @@ species_key <- read.csv("..//KNZ_species_list.csv") %>%
                          growthform="unkn", lifeform="f",origin="unkn", photo="unkn", Genus_Species="solidago_spp"))
     
 ### 2018
-  cover_class_key <- data.frame(
-  Cover_class = 1:7,
-  abs_cover = c(0.5, 3, 15, 37.5, 62.5, 85, 97.5)
-  )
+
 
 spcomp_2018 <- read.csv("Species_Comp_k20a_before.csv") %>%
   left_join(cover_class_key, by="Cover_class") %>%
