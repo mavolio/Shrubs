@@ -78,10 +78,10 @@ pre_class<-pre %>%  ## I changed this to actual covers because the cover classes
   ungroup() %>%
   #group_by(Transect, Frame) %>%
   #mutate(relcov=abs_cover/sum(abs_cover)) %>% 
-  mutate(class=ifelse(Lifeform=="Woody"&abs_cover>50, 1, 0))%>%
-  filter(class==1)%>%
-  select(Transect, Frame, class) %>% 
-  unique()
+  #mutate(class=ifelse(Lifeform=="Woody"&abs_cover>50, 1, 0))%>%
+  #filter(class==1)%>%
+  #select(Transect, Frame, class) %>% 
+  #unique()
 
 ggplot(data=subset(pre_class, Lifeform=="Woody"), aes(x=Frame, y=abs_cover))+
   geom_point()+
@@ -115,7 +115,7 @@ summary(aov(Abundance~category, data = bg))#no sig diff
 ###
 {
 
-species_key <- read.csv("//KNZ_species_list.csv") %>%
+species_key <- read.csv("KNZ_species_list.csv") %>%##meghan changed this slightly.
     mutate(Genus_Species = paste(genus, species, sep="_")) %>%
     bind_rows(data.frame(code=551, gen="quincu", spec="lobata", genus="quincula", species="lobata", family="solanaceae",
                          growthform="p", lifeform="f",origin="n", photo="unkn", Genus_Species="quincula_lobata")) %>%
