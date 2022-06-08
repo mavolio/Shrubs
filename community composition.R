@@ -76,17 +76,18 @@ pre_class<-pre %>%  ## I changed this to actual covers because the cover classes
   left_join(cover_class_key, by="Cover_class") %>%
   summarize(abs_cover=sum(abs_cover)) %>% 
   ungroup() %>%
-  #group_by(Transect, Frame) %>%
-  #mutate(relcov=abs_cover/sum(abs_cover)) %>% 
-  #mutate(class=ifelse(Lifeform=="Woody"&abs_cover>50, 1, 0))%>%
-  #filter(class==1)%>%
-  #select(Transect, Frame, class) %>% 
-  #unique()
+  group_by(Transect, Frame) %>%
+  mutate(relcov=abs_cover/sum(abs_cover)) %>% 
+  mutate(class=ifelse(Lifeform=="Woody"&abs_cover>40, 1, 0))%>%
+  filter(class==1)%>%
+  select(Transect, Frame, class) %>% 
+  unique()
 
 ggplot(data=subset(pre_class, Lifeform=="Woody"), aes(x=Frame, y=abs_cover))+
   geom_point()+
   geom_line()+
-  facet_wrap(~Transect)
+  facet_wrap(~Transect)+
+  geom_hline(yintercept = 45)
 
 testing <- pre_class %>%
   spread(key=Lifeform, value=abs_cover) %>%
@@ -126,8 +127,8 @@ species_key <- read.csv("KNZ_species_list.csv") %>%##meghan changed this slightl
     
 ### 2018
 
-
-spcomp_2018 <- read.csv("Species_Comp_k20a_before.csv") %>%
+#meghan changed the path slightly
+spcomp_2018 <- read.csv("Data 2018\\Species_Comp_k20a_before.csv") %>%
   left_join(cover_class_key, by="Cover_class") %>%
   dplyr::select(-Cover) %>%
   rename(Transect = Trasect) %>%
@@ -162,12 +163,13 @@ spcomp_2018 %>% filter(is.na(sp_code))
 #   unique()
   
 ### 2019 data
-missing_spcode_2019 <- read.csv("Woody removal plots_K20A_Konza2019_200702_partial.csv") %>%
+#meghan changed the path slightly
+missing_spcode_2019 <- read.csv("Data 2019//Woody removal plots_K20A_Konza2019_200702_partial.csv") %>%
   rename(Genus_Species=Species) %>%
   mutate(Genus_Species = tolower(sub(" ", "_", Genus_Species))) %>%
   dplyr::select(Num_ID, Genus_Species) %>% unique() %>% filter(Num_ID=="")
 
-spcomp_2019 <-  read.csv("Woody removal plots_K20A_Konza2019_200702_partial.csv") %>%
+spcomp_2019 <-  read.csv("Data 2019//Woody removal plots_K20A_Konza2019_200702_partial.csv") %>%
   rename(Genus_Species=Species, Year = "ï..Year", Plot=Plot..Frame.) %>%
   mutate(Genus_Species = tolower(sub(" ", "_", Genus_Species))) %>%
   mutate(Genus_Species = replace(Genus_Species, Genus_Species=="liatris", "liatris_punctata")) %>%
@@ -197,12 +199,13 @@ spcomp_2019 <-  read.csv("Woody removal plots_K20A_Konza2019_200702_partial.csv"
   
 
 ### 2021 data
-missing_spcode_2021 <- read.csv("Woody removal plots_K20A_Konza2021.csv") %>%
+#meghan changed the path slightly
+missing_spcode_2021 <- read.csv("Data 2021//Woody removal plots_K20A_Konza2021.csv") %>%
   rename(Genus_Species=Species) %>%
   mutate(Genus_Species = tolower(sub(" ", "_", Genus_Species))) %>%
   dplyr::select(Num_ID, Genus_Species) %>% unique() %>% filter(Num_ID=="")
 
-spcomp_2021 <-  read.csv("Woody removal plots_K20A_Konza2021.csv") %>%
+spcomp_2021 <-  read.csv("Data 2021//Woody removal plots_K20A_Konza2021.csv") %>%
   rename(Genus_Species=Species, Year = "ï..Year", Plot=Plot..Frame.) %>%
   mutate(Genus_Species = tolower(sub(" ", "_", Genus_Species))) %>%
   mutate(Genus_Species = replace(Genus_Species, Genus_Species=="liatris", "liatris_punctata")) %>%
@@ -347,7 +350,27 @@ ggplot(spp.scrs_sub, aes(x=NMDS1, y=NMDS2, col=lifeform)) +
 }
 
 
+###using codyn to look at changes through time.
 
+spcomp_all2<-spcomp_all %>% 
+  mutate(plotid=paste(transect, plot, sep="_"),
+         trtid=paste(transect, category, sep="_"))
+
+###within a transect how much are woody vs grassy plots changing over time?
+cent_change<-multivariate_change(spcomp_all2, time.var="year", abundance.var="abs_cover", replicate.var="plotid", treatment.var = 'trtid', species.var="sp_code", reference.time=2018)
+
+cent_changeplot<-cent_change %>% 
+  separate(trtid, into=c("transect", "category"), sep="_") %>% 
+  filter(year2==2021) %>% 
+  group_by(category) %>% 
+  summarize(change=mean(composition_change), se=SE_function(composition_change))
+
+ggplot(data=cent_changeplot, aes(x=category, y=change))+
+  geom_bar(stat="identity")+
+  geom_errorbar(aes(ymin=change-se, ymax=change+se), width=0.1, position=position_dodge())
+
+##across the whole watershed how is dispersion changing?
+cent_change2<-multivariate_change(spcomp_all2, time.var="year", abundance.var="abs_cover", replicate.var="plotid", treatment.var = 'category', species.var="sp_code", reference.time=2018)
 
 
 
