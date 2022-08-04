@@ -5,12 +5,14 @@
 
 
 ### Set up workstation
-setwd("C://Users/mavolio2/Dropbox/Konza Research/Shrub Islands/")
+setwd("~/Dropbox/Konza Research/Shrub Islands/")
 setwd("C:\\Users\\wilco\\OneDrive - University of Wyoming\\Cross_workstation_workspace\\Current projects\\Konza projects_other\\ShrubRecolonization\\")
 
 library(tidyverse)
 library(codyn)
 library(vegan)
+
+theme_set(theme_bw(12))
 
 ### Standard Error function
 SE_function<-function(x,na.rm=na.rm){
@@ -20,31 +22,39 @@ SE_function<-function(x,na.rm=na.rm){
 
 ###
 ### 1. for each transect, designate a plot as grassland, transitional, or burned, based on 2018 data
+
+#we decided this does not work and instead are walking the transects to determine this.
 ###
 {
-post <- read.csv("Woody removal plots_K20A_after.csv") %>% 
+post <- read.csv("Data 2018/Woody removal plots_K20A_after.csv") %>% 
   rename(transect=Transect,
          plot=Plot..Frame.)
 
 bareground<-post%>%
   filter(Species=="Other- Bare Ground") # there is so much bareground I am not sure this is going to work
 
+transects<-read.csv("shrub transect locations.csv")
+
+merge<-bareground %>% 
+  left_join(transects) %>% 
+  drop_na()
+
 hist(bareground$Abundance)
 
-pre<-read.csv("Species_Comp_k20a_before.csv")
+pre<-read.csv("Data 2018/Species_Comp_k20a_before.csv") %>% 
+  mutate(Plot=Frame-1)
 
 # splist<-pre %>% 
 #   select(Genus_Species) %>% 
 #   unique()
 # 
 # write.csv(splist, "Data 2018/pre_species.csv", row.names = F)
-lf<-read.csv("pre_species_lifeform.csv")
+lf<-read.csv("Data 2018/pre_species_lifeform.csv")
 
 plotslist<-pre%>%
-  select(Trasect, Frame) %>% 
+  select(Trasect, Plot) %>% 
   rename(Transect=Trasect) %>%
   unique()
-
 # pre_class_total<-pre %>% 
 #   left_join(lf) %>% 
 #   filter(Lifeform!="Drop")%>%
@@ -72,18 +82,18 @@ pre_class<-pre %>%  ## I changed this to actual covers because the cover classes
   left_join(lf) %>% 
   filter(Lifeform!="Drop")%>%
   rename(Transect=Trasect) %>%
-  group_by(Transect, Frame, Lifeform) %>% 
+  group_by(Transect, Plot, Lifeform) %>% 
   left_join(cover_class_key, by="Cover_class") %>%
   summarize(abs_cover=sum(abs_cover)) %>% 
   ungroup() %>%
-  group_by(Transect, Frame) %>%
+  group_by(Transect, Plot) %>%
   mutate(relcov=abs_cover/sum(abs_cover)) %>% 
   mutate(class=ifelse(Lifeform=="Woody"&abs_cover>40, 1, 0))%>%
   filter(class==1)%>%
-  select(Transect, Frame, class) %>% 
+  select(Transect, Plot, class) %>% 
   unique()
 
-ggplot(data=subset(pre_class, Lifeform=="Woody"), aes(x=Frame, y=abs_cover))+
+ggplot(data=subset(pre_class, Lifeform=="Woody"), aes(x=Plot, y=abs_cover))+
   geom_point()+
   geom_line()+
   facet_wrap(~Transect)+
@@ -94,13 +104,16 @@ testing <- pre_class %>%
   replace(is.na(.),0)
   
   
-# Data frame identifying pre-burn grass versus woody states
+# Data frame identifying pre-burn grass versus woody states - even when correcting for plot shift, this doesn't match what we have observed in 2022
+transect<-transects %>% 
+  rename(Plot=plot)
+
 plotcat<-plotslist%>%
   left_join(pre_class) %>% 
   mutate(category=ifelse(is.na(class), "grassy", 'woody')) %>% 
-  rename(transect=Transect,
-         plot=Frame) %>% 
-  select(-class)
+  rename(transect=Transect) %>% 
+  select(-class) %>% 
+  left_join(transect)
 
 #how do classes differ in bareground?
 bg<-bareground%>%
@@ -128,7 +141,8 @@ species_key <- read.csv("KNZ_species_list.csv") %>%##meghan changed this slightl
 ### 2018
 
 #meghan changed the path slightly
-spcomp_2018 <- read.csv("Data 2018\\Species_Comp_k20a_before.csv") %>%
+  #pre 2018 data had transects at plots at different points, Plot 1 is actually plot 0 and this was also done after shrubs were cut down, so I am not sure how much we want to use this.
+spcomp_2018 <- read.csv("Data 2018/Species_Comp_k20a_before.csv") %>%
   left_join(cover_class_key, by="Cover_class") %>%
   dplyr::select(-Cover) %>%
   rename(Transect = Trasect) %>%
@@ -145,7 +159,12 @@ spcomp_2018 <- read.csv("Data 2018\\Species_Comp_k20a_before.csv") %>%
   rename(sp_code = code, Plot=Frame, Genus_Species_clean=Genus_Species) %>%
   filter(!Genus_Species_clean %in% c("rock","bare_ground","litter_herbeceous","litter_woody")) %>%
   mutate(Year=2018) %>%
-  dplyr::select(Year, Transect, Plot, sp_code, Genus_Species_clean, abs_cover)
+  dplyr::select(Year, Transect, Plot, sp_code, Genus_Species_clean, abs_cover) %>% 
+  mutate(newplot=Plot-1) %>% 
+  select(-Plot) %>% 
+  rename(Plot=newplot) %>% 
+  filter(Plot!=0)
+  
 
 ## Check for missing species
 spcomp_2018 %>% filter(is.na(sp_code))
@@ -164,13 +183,13 @@ spcomp_2018 %>% filter(is.na(sp_code))
   
 ### 2019 data
 #meghan changed the path slightly
-missing_spcode_2019 <- read.csv("Data 2019//Woody removal plots_K20A_Konza2019_200702_partial.csv") %>%
+missing_spcode_2019 <- read.csv("Data 2019/Woody removal plots_K20A_Konza2019_200702_all.csv") %>%
   rename(Genus_Species=Species) %>%
   mutate(Genus_Species = tolower(sub(" ", "_", Genus_Species))) %>%
   dplyr::select(Num_ID, Genus_Species) %>% unique() %>% filter(Num_ID=="")
 
-spcomp_2019 <-  read.csv("Data 2019//Woody removal plots_K20A_Konza2019_200702_partial.csv") %>%
-  rename(Genus_Species=Species, Year = "ï..Year", Plot=Plot..Frame.) %>%
+spcomp_2019 <-  read.csv("Data 2019/Woody removal plots_K20A_Konza2019_200702_all.csv") %>%
+  rename(Genus_Species=Species, Plot=Plot..Frame.) %>%
   mutate(Genus_Species = tolower(sub(" ", "_", Genus_Species))) %>%
   mutate(Genus_Species = replace(Genus_Species, Genus_Species=="liatris", "liatris_punctata")) %>%
   mutate(Genus_Species = replace(Genus_Species, Genus_Species=="symphoricarpos", "symphoricarpos_orbiculatus")) %>%
@@ -184,7 +203,7 @@ spcomp_2019 <-  read.csv("Data 2019//Woody removal plots_K20A_Konza2019_200702_p
   rename(sp_code = code) %>%
   mutate(Num_ID = ifelse(Num_ID=="", sp_code, Num_ID)) %>%
   filter(!is.na(Num_ID)) %>%
-  dplyr::select(-sp_code, -Notes) %>%
+  select(-sp_code) %>%
   rename(sp_code = Num_ID) %>%
   left_join(
     dplyr::select(species_key, Genus_Species, code) %>%
@@ -195,7 +214,8 @@ spcomp_2019 <-  read.csv("Data 2019//Woody removal plots_K20A_Konza2019_200702_p
   summarize(June=max(June), August=max(August)) %>%
   ungroup() %>%
   mutate(abs_cover = pmax(June, August)) %>%
-  dplyr::select(Year, Transect, Plot, sp_code, Genus_Species_clean, abs_cover)
+  dplyr::select(Transect, Plot, sp_code, Genus_Species_clean, abs_cover) %>% 
+  mutate(abs_cover=as.numeric(abs_cover), Year=2019)
   
 
 ### 2021 data
@@ -206,7 +226,7 @@ missing_spcode_2021 <- read.csv("Data 2021//Woody removal plots_K20A_Konza2021.c
   dplyr::select(Num_ID, Genus_Species) %>% unique() %>% filter(Num_ID=="")
 
 spcomp_2021 <-  read.csv("Data 2021//Woody removal plots_K20A_Konza2021.csv") %>%
-  rename(Genus_Species=Species, Year = "ï..Year", Plot=Plot..Frame.) %>%
+  rename(Genus_Species=Species, Plot=Plot..Frame.) %>%
   mutate(Genus_Species = tolower(sub(" ", "_", Genus_Species))) %>%
   mutate(Genus_Species = replace(Genus_Species, Genus_Species=="liatris", "liatris_punctata")) %>%
   mutate(Genus_Species = replace(Genus_Species, Genus_Species=="symphoricarpos", "symphoricarpos_orbiculatus")) %>% #
@@ -236,24 +256,27 @@ spcomp_2021 <-  read.csv("Data 2021//Woody removal plots_K20A_Konza2021.csv") %>
 spcomp_all <- spcomp_2018 %>%
   bind_rows(spcomp_2019, spcomp_2021) %>%
   rename(transect=Transect, plot=Plot, year=Year, genus_species=Genus_Species_clean) %>%
-  full_join(plotcat, by=c("transect", "plot"))
+  left_join(transects) %>% 
+  drop_na()
 
 }
 
 ###
 ### 3. Prep data for multivariate viewing and plot NMDS trajectories 
+##MA note - after looking at the data, I do not think we shoudl include 2018, they are just different and we used different methods to get cover data. I no longer think they are comparable.
 ###
 {
 spcomp_wide <- spcomp_all %>%
+    #filter(year!=2018) %>% 
   dplyr::select(-sp_code) %>%
   spread(key=genus_species, value=abs_cover) %>%
   replace(is.na(.),0)
 
 # Separate out spcomp and environmental columns (cols are species) #
-sp_data <- spcomp_wide %>% dplyr::select(-year:-category)
-env_data <- spcomp_wide %>% dplyr::select(year:category)
+sp_data <- spcomp_wide %>% dplyr::select(-year:-Notes)
+env_data <- spcomp_wide %>% dplyr::select(year:Notes)
 
-mds_all <- metaMDS(sp_data)
+mds_all <- metaMDS(sp_data,trymax = 100)
 mds_scores <- data.frame(env_data, scores(mds_all, display="sites"))
 
 # ddply(irrt.scores.all, .(Year), summarize, ### Calculates centroids
@@ -261,7 +284,7 @@ mds_scores <- data.frame(env_data, scores(mds_all, display="sites"))
 # 	NMDS2 = mean(NMDS2))
 
 ## Analyses run seperately by year ##
-ggplot(filter(mds_scores, category=="grassy"), aes(x=NMDS1, y=NMDS2, col=factor(year))) +
+ggplot(filter(mds_scores, cover=="Sh"), aes(x=NMDS1, y=NMDS2, col=factor(year))) +
   geom_path(inherit.aes=F, aes(NMDS1, NMDS2, group=plot)) +
   geom_point() +
   facet_wrap(~ transect) +
@@ -270,25 +293,24 @@ ggplot(filter(mds_scores, category=="grassy"), aes(x=NMDS1, y=NMDS2, col=factor(
 
 ### Mean NMDS
 mds_means <- mds_scores %>%
-  group_by(year, transect, category) %>%
+  group_by(year, transect, cover) %>%
   summarize_at(vars(NMDS1, NMDS2), .funs=list(mean=mean, sterr=SE_function))
 
-ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, col=factor(year), shape=category, size=category, label=transect,
-                      xmin=NMDS1_mean-NMDS1_sterr,xmax=NMDS1_mean+NMDS1_sterr,
+ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, col=cover, shape=as.factor(year),label=transect,xmin=NMDS1_mean-NMDS1_sterr,xmax=NMDS1_mean+NMDS1_sterr,
                       ymin=NMDS2_mean-NMDS2_sterr,ymax=NMDS2_mean+NMDS2_sterr)) +
   geom_errorbarh(height=0, size=0.5) +
   geom_errorbar(width=0, size=0.5) +
-  geom_point() +
+  #geom_path(aes(group=transect))+
+  geom_point(size=3) +
+  facet_grid(~cover)+
   geom_text(size=3, nudge_x=0.05, nudge_y=0.05, col="black") +
-#  facet_wrap(~ transect) +
-  scale_shape_manual(values=c(1,16)) +
-  scale_size_manual(values=c(1,3)) +
+  scale_shape_manual(values=c(1,16, 8))+
   theme_bw() 
 
-ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, col=factor(year), shape=category,
+ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, col=cover, shape=as.factor(year),
                       xmin=NMDS1_mean-NMDS1_sterr,xmax=NMDS1_mean+NMDS1_sterr,
                       ymin=NMDS2_mean-NMDS2_sterr,ymax=NMDS2_mean+NMDS2_sterr)) +
-  geom_path(inherit.aes=F, aes(NMDS1_mean, NMDS2_mean, group=category)) +
+  geom_path(inherit.aes=F, aes(NMDS1_mean, NMDS2_mean, group=cover)) +
   geom_errorbarh(height=0) +
   geom_errorbar(width=0) +
   geom_point() +
@@ -325,6 +347,34 @@ ggplot(spp.scrs_sub, aes(x=NMDS1, y=NMDS2, col=lifeform)) +
 
 }
 
+
+
+###using codyn to look at changes through time.
+
+spcomp_all2<-spcomp_all %>% 
+  mutate(plotid=paste(transect, plot, sep="_"),
+         trtid=paste(transect, cover, sep="_"))
+
+###within a transect how much are woody vs grassy plots changing over time?
+cent_change<-multivariate_change(spcomp_all2, time.var="year", abundance.var="abs_cover", replicate.var="plotid", treatment.var = 'trtid', species.var="sp_code", reference.time=2018)
+
+cent_changeplot<-cent_change %>% 
+  separate(trtid, into=c("transect", "cover"), sep="_") %>% 
+  filter(year2==2021) %>% 
+  group_by(cover) %>% 
+  summarize(change=mean(composition_change), se=SE_function(composition_change))
+
+ggplot(data=cent_changeplot, aes(x=cover, y=change))+
+  geom_bar(stat="identity")+
+  geom_errorbar(aes(ymin=change-se, ymax=change+se), width=0.1, position=position_dodge())+
+  theme_bw()
+
+##across the whole watershed how is dispersion changing?
+cent_change2<-multivariate_change(spcomp_all2, time.var="year", abundance.var="abs_cover", replicate.var="plotid", treatment.var = 'category', species.var="sp_code", reference.time=2018)
+
+
+##basic analyses
+
 ###
 ### Look at functional group covers through time
 ###
@@ -332,46 +382,48 @@ ggplot(spp.scrs_sub, aes(x=NMDS1, y=NMDS2, col=lifeform)) +
   
   lifeform_sums <- spcomp_all %>%
     left_join(species_key, by=c("genus_species" = "Genus_Species")) %>%
-    group_by(year, transect, plot, category, lifeform) %>%
+    group_by(year, transect, plot, cover, lifeform) %>%
     summarize(abs_cover = sum(abs_cover))
   
   
-  ggplot(filter(lifeform_sums, lifeform %in% c("f","g","w")), aes(x=factor(year), y=abs_cover, col=category)) +
+ggplot(filter(lifeform_sums, lifeform %in% c("f","g","w")), aes(x=factor(year), y=abs_cover, col=cover)) +
     geom_jitter(position=position_dodge(width=.7)) +
     geom_violin(alpha=.5) +
     facet_wrap(~lifeform) +
     theme_bw()
   
-  filter(lifeform_sums, year==2018 & category=="woody" & abs_cover<50)
-  filter(lifeform_sums, year==2018 & transect==5 & plot==3)
-  filter(spcomp_all, year==2018 & transect==5 & plot==3)
-  
-  ?geom_jitter
+meancov<-lifeform_sums %>% 
+  group_by(year, lifeform, cover) %>% 
+  summarize(mcov=mean(abs_cover), ster=SE_function(abs_cover)) %>% 
+  filter(lifeform!="s"&lifeform!="m")
+
+ggplot(data=meancov, aes(x=year, y=mcov, color=lifeform))+
+  geom_errorbar(aes(ymin=mcov-ster, ymax=mcov+ster), width=0.5)+
+  geom_point()+
+  geom_line()+
+  facet_wrap(~cover)+
+  scale_color_manual(name="Lifeform", labels=c('Forb', 'Grass', 'Woody'), values = c('goldenrod2', 'darkgreen','brown'))
+
+covertype<-spcomp_all %>% 
+  select(transect, plot, cover) %>% 
+  unique()
+
+richeven<-community_structure(spcomp_all2, abundance.var = "abs_cover", time.var = "year", replicate.var = "plotid") %>% 
+  separate(plotid, into = c('transect', 'plot')) %>% 
+  mutate(transect=as.integer(transect), plot=as.integer(plot)) %>% 
+  left_join(covertype)
+
+meanrich<-richeven %>% 
+  group_by(year, cover) %>% 
+  summarize(mrich=mean(richness), ster=SE_function(richness))
+
+ggplot(data=meanrich, aes(x=year, y=mrich, color=cover))+
+  geom_errorbar(aes(ymin=mrich-ster, ymax=mrich+ster), width=0.5)+
+  geom_point()+
+  geom_line()+
+  scale_color_manual(name="Plot type", labels=c('Grassy', 'Shrubby', 'Transitional'), values = c('darkgreen', 'brown','goldenrod2'))
+
 }
-
-
-###using codyn to look at changes through time.
-
-spcomp_all2<-spcomp_all %>% 
-  mutate(plotid=paste(transect, plot, sep="_"),
-         trtid=paste(transect, category, sep="_"))
-
-###within a transect how much are woody vs grassy plots changing over time?
-cent_change<-multivariate_change(spcomp_all2, time.var="year", abundance.var="abs_cover", replicate.var="plotid", treatment.var = 'trtid', species.var="sp_code", reference.time=2018)
-
-cent_changeplot<-cent_change %>% 
-  separate(trtid, into=c("transect", "category"), sep="_") %>% 
-  filter(year2==2021) %>% 
-  group_by(category) %>% 
-  summarize(change=mean(composition_change), se=SE_function(composition_change))
-
-ggplot(data=cent_changeplot, aes(x=category, y=change))+
-  geom_bar(stat="identity")+
-  geom_errorbar(aes(ymin=change-se, ymax=change+se), width=0.1, position=position_dodge())
-
-##across the whole watershed how is dispersion changing?
-cent_change2<-multivariate_change(spcomp_all2, time.var="year", abundance.var="abs_cover", replicate.var="plotid", treatment.var = 'category', species.var="sp_code", reference.time=2018)
-
 
 
 
