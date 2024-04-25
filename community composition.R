@@ -32,7 +32,8 @@ post <- read.csv("Data 2018/Woody removal plots_K20A_after.csv") %>%
   rename(transect=Transect,
          plot=Plot..Frame.)
 bareground<-post%>%
-  filter(Species=="Other- Bare Ground") # there is so much bareground I am not sure this is going to work
+  filter(Species=="Other- Bare Ground") %>% 
+  filter(Abundance>70)# there is so much bareground I am not sure this is going to work
 
 transects<-read.csv("shrub transect locations.csv")
 
