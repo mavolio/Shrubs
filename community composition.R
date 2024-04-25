@@ -305,10 +305,12 @@ spcomp_wideave <- spcomp_all %>%
   dplyr::select(-sp_code, -X2022.data) %>% 
   group_by(year, transect, cover, shrubSP, genus_species) %>% 
   summarise(mcov=mean(abs_cover)) %>% 
-  pivot_wider(names_from = genus_species, values_from = mcov, values_fill = 0) 
+  pivot_wider(names_from = genus_species, values_from = mcov, values_fill = 0) %>% 
+  filter(cover!='T')
 
 # Separate out spcomp and environmental columns (cols are species) #
-sp_data <- spcomp_wideave %>% ungroup %>% dplyr::select(-year:-shrubSP)
+sp_data <- spcomp_wideave %>% ungroup %>% 
+  dplyr::select(-year:-shrubSP) 
 env_data <- spcomp_wideave %>% ungroup %>% dplyr::select(year:shrubSP)
 
 #this model is working. best solution not repeated
@@ -342,7 +344,7 @@ a<-ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, col=as.factor(year),label=t
   geom_text(size=3, nudge_x=0.05, nudge_y=0.05, col="black") +
   theme_bw() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-
+a
 # ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, col=cover, shape=as.factor(year),
 #                       xmin=NMDS1_mean-NMDS1_sterr,xmax=NMDS1_mean+NMDS1_sterr,
 #                       ymin=NMDS2_mean-NMDS2_sterr,ymax=NMDS2_mean+NMDS2_sterr)) +
@@ -390,7 +392,8 @@ spcomp_all2<-spcomp_all %>%
   filter(shrubSP %in% c('', 'Cornus', 'Rhus glabra')) %>% 
   group_by(year, transect, cover, shrubSP) %>%
   mutate(plotid=paste(transect, plot, sep="_"),
-         trtid=paste(transect, cover, shrubSP, sep="_"))
+         trtid=paste(transect, cover, shrubSP, sep="_")) %>% 
+  filter(cover!='T')
 
 ###within a transect how much are woody vs grassy plots changing over time?
 cent_change<-multivariate_change(spcomp_all2, time.var="year", abundance.var="abs_cover", replicate.var="plotid", treatment.var = 'trtid', species.var="sp_code")
@@ -414,11 +417,12 @@ b<-ggplot(data=cent_changeplot, aes(x=type, y=change))+
   geom_bar(stat="identity")+
   geom_errorbar(aes(ymin=change-ci, ymax=change+ci), width=0.1, position=position_dodge())+
   theme_bw()+
-  scale_x_discrete(limits=c('G', 'T', 'Cornus', 'Rhus glabra'))+
+  scale_x_discrete(limits=c('G', 'Cornus', 'Rhus glabra'))+
   annotate('text', x=1, y=0.4, size=5, label="B")+
-  annotate('text', x=2, y=0.55, size=5, label="A")+
-  annotate('text', x=3, y=0.7, size=5, label="A")+
-  annotate('text', x=4, y=0.5, size=5, label="AB")
+  annotate('text', x=2, y=0.7, size=5, label="A")+
+  annotate('text', x=3, y=0.5, size=5, label="AB")+
+  xlab('Plot type')+
+  ylab('Change in centroid')
 b
 grid.arrange(a,b)
 
