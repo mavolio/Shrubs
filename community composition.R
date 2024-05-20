@@ -1,12 +1,12 @@
 ### Calculate and visualize shrub trajectories post-burn
 ###
 ### Author: Meghan Avolio, Kevin Wilcox (wilcoxkr@gmail.com)
-### Last updated June 7, 2022
+### Last updated Jan 24, 2024
 
 
 ### Set up workstation
 setwd("C://Users/mavolio2/Dropbox/Konza Research/Shrub Islands/")
-setwd("C:\\Users\\wilco\\OneDrive - University of Wyoming\\Cross_workstation_workspace\\Current projects\\Konza projects_other\\ShrubRecolonization\\")
+setwd("C:\\Users\\K_WILCOX\\OneDrive - UNCG\\Current projects\\Konza projects_other\\ShrubRecolonization\\")
 
 library(tidyverse)
 library(codyn)
@@ -69,28 +69,31 @@ cover_class_key <- data.frame(
 )
 
 pre_class<-pre %>%  ## I changed this to actual covers because the cover classes are not linear so calculating relcov with them doesn't work
-  left_join(lf) %>% 
+  left_join(lf) %>%  ## KW changed it back because identifying woody plots is problematic using absolute cover
   filter(Lifeform!="Drop")%>%
   rename(Transect=Trasect) %>%
   group_by(Transect, Frame, Lifeform) %>% 
   left_join(cover_class_key, by="Cover_class") %>%
   summarize(abs_cover=sum(abs_cover)) %>% 
   ungroup() %>%
-  #group_by(Transect, Frame) %>%
-  #mutate(relcov=abs_cover/sum(abs_cover)) %>% 
-  #mutate(class=ifelse(Lifeform=="Woody"&abs_cover>50, 1, 0))%>%
-  #filter(class==1)%>%
-  #select(Transect, Frame, class) %>% 
-  #unique()
+  group_by(Transect, Frame) %>%
+  mutate(relcov=abs_cover/sum(abs_cover)) %>%
+  mutate(class=ifelse(Lifeform=="Woody"&abs_cover>50, 1, 0))%>%
+  filter(class==1)%>%
+  select(Transect, Lifeform, Frame, class) %>%
+  unique()
 
-ggplot(data=subset(pre_class, Lifeform=="Woody"), aes(x=Frame, y=abs_cover))+
+### plot woody relative cover (only running pre_class script up to filter statement)
+### There are some categorization problems you can see by comparing the absolute cover plots
+### Problems specifically with transect 5, 8, and 9 specifically
+ggplot(data=subset(pre_class, Lifeform %in% c("Woody")), aes(x=Frame, y=relcov, col=Lifeform))+
   geom_point()+
-  geom_line()+
-  facet_wrap(~Transect)
+  geom_path()+
+  facet_wrap(~as.factor(Transect))
 
-testing <- pre_class %>%
-  spread(key=Lifeform, value=abs_cover) %>%
-  replace(is.na(.),0)
+# testing <- pre_class %>%
+#   spread(key=Lifeform, value=abs_cover) %>%
+#   replace(is.na(.),0)
   
   
 # Data frame identifying pre-burn grass versus woody states
@@ -168,7 +171,7 @@ missing_spcode_2019 <- read.csv("Woody removal plots_K20A_Konza2019_200702_parti
   dplyr::select(Num_ID, Genus_Species) %>% unique() %>% filter(Num_ID=="")
 
 spcomp_2019 <-  read.csv("Woody removal plots_K20A_Konza2019_200702_partial.csv") %>%
-  rename(Genus_Species=Species, Year = "ï..Year", Plot=Plot..Frame.) %>%
+  rename(Genus_Species=Species, Plot=Plot..Frame.) %>%
   mutate(Genus_Species = tolower(sub(" ", "_", Genus_Species))) %>%
   mutate(Genus_Species = replace(Genus_Species, Genus_Species=="liatris", "liatris_punctata")) %>%
   mutate(Genus_Species = replace(Genus_Species, Genus_Species=="symphoricarpos", "symphoricarpos_orbiculatus")) %>%
