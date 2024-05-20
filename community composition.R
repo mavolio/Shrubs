@@ -6,7 +6,7 @@
 
 ### Set up workstation
 setwd("C:\\Users\\mavolio2\\Dropbox/Konza Research/Shrub Islands/")
-setwd("C:\\Users\\wilco\\OneDrive - University of Wyoming\\Cross_workstation_workspace\\Current projects\\Konza projects_other\\ShrubRecolonization\\")
+setwd("C:\\Users\\K_WILCOX\\OneDrive - UNCG\\Current projects\\Konza projects_other\\ShrubRecolonization\\")
 
 library(tidyverse)
 library(codyn)
