@@ -351,12 +351,13 @@ a<-ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, shape=as.factor(year),label
   scale_shape_manual(name="Year", values = c(15,16,17))+
   geom_path(aes(group=group), color="black")+
   geom_point(size=3) +
-  facet_grid(~cover)+
+ # facet_grid(~cover)+
   geom_text(size=3, nudge_x=0.05, nudge_y=0.05, col="black") +
   theme_bw() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
   xlab("NMDS1")+
-  ylab("NMDS2")
+  ylab("NMDS2")+
+  ggtitle("A")
 a
 # ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, col=cover, shape=as.factor(year),
 #                       xmin=NMDS1_mean-NMDS1_sterr,xmax=NMDS1_mean+NMDS1_sterr,
@@ -435,7 +436,8 @@ b<-ggplot(data=cent_changeplot, aes(x=type, y=change))+
   annotate('text', x=3, y=0.5, size=5, label="AB")+
   xlab('Plot type')+
   ylab('Change in centroid')+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  ggtitle("B")
 b
 grid.arrange(a,b)
 
@@ -448,6 +450,8 @@ cent_change2<-multivariate_change(spcomp_all2, time.var="year", abundance.var="a
 species_key<-species_key %>% 
   rename(genus_species=Genus_Species) 
 
+forfacet<-data.frame(key=c('5_3', '5_5', '7_4','7_5','7_8','2_4','8_5','9_3','9_4','9_5','10_8'), letter=c('A', 'B','C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'))
+
 shrubislands<-spcomp_all %>% 
   filter(year!=2018, X2022.data=="yes", cover=="Shrub", abs_cover>0) %>% 
   filter(shrubSP %in% c('', 'Cornus', 'Rhus glabra')) %>% 
@@ -459,7 +463,8 @@ shrubislands<-spcomp_all %>%
                    ifelse(lifeform=='w', 'Woody', 'Forb'))) %>% 
   mutate(lifeform3=ifelse(rank<2, paste(toupper(substring(gen, 1, 1)), species, sep=". "), "")) %>% 
   mutate(key2=factor(key, levels=c('5_3', '5_5', '7_4', '7_5', '7_8', '2_4', '8_5', '9_3', '9_4', '9_5', '10_8'))) %>% 
-  left_join(bareground)
+  left_join(bareground) %>% 
+  left_join(forfacet)
 
 labels<-shrubislands %>% 
   ungroup() %>% 
@@ -473,7 +478,7 @@ facetlabels=c(
   '5_5'='Upland, R. glabra',
   '7_4'= 'Upland, R. glabra',
   '7_5'='Upland, R. glabra',
-  '7_8'='Upland, R. glabra', 
+  '7_8'='Upland, R. glabra',
   '2_4'='Slope, Cornus',
   '8_5'='Slope, Cornus',
   '9_3'='Lowland, Cornus', 
@@ -481,16 +486,23 @@ facetlabels=c(
   '9_5'='Lowland, Cornus',
   '10_8'='Lowland, Cornus')
 
+library(ggh4x)
 
+design <- "
+ABCDE
+FG###
+HIJK#"
+  
+  
 ggplot(data=shrubislands, aes(x=rank, y=abs_cover, color=lifeform2, label=lifeform3))+
   geom_line(color='black', aes(group=year))+
   scale_color_manual(name='Lifeform', values = c('purple4', 'springgreen4','burlywood4'))+
   geom_text_repel(color='black')+
   geom_point(size=2, aes(shape=as.factor(year)))+
   scale_shape_manual(name='Year', values=c(15,16,17))+
-  facet_wrap(~key2, labeller=labeller(key2=facetlabels))+
+  facet_manual(vars(key2), labeller=labeller(key2=facetlabels), design=design)+
   geom_text(data=labels, aes(x=Inf, y=Inf, label=bareground), hjust=1.5, vjust=1.5, color='black')+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = c(0.9, 0.4))+
   ylab("Cover")+
   xlab('Rank')
 
