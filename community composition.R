@@ -506,6 +506,46 @@ ggplot(data=shrubislands, aes(x=rank, y=abs_cover, color=lifeform2, label=lifefo
   ylab("Cover")+
   xlab('Rank')
 
+
+###figure for grant
+shrubislands2<-shrubislands %>% 
+  filter(key2 %in% c('9_3','9_4','9_5', '10_8')) %>% 
+  mutate(key3=factor(key2, levels=c('9_3','10_8', '9_5','9_4'))) %>% 
+  mutate(lifeform4=ifelse(rank<3, paste(toupper(substring(gen, 1, 1)), species, sep=". "), "")) %>% 
+  mutate(lifeform5=ifelse(lifeform=='g'&growthform=='a', 'Ann. Grass',
+                          ifelse(lifeform=='g'|lifeform=='s', 'Peren. Grass',
+                                 ifelse(lifeform=='f'&growthform=='a'|lifeform=='f'&growthform=='b', 'Ann. Forb', 
+                                        ifelse(lifeform=='f'&growthform=='p', 'Peren. Forb',
+                                               ifelse(lifeform=='w', 'Woody', 999))))))
+
+facetlabels2=c(
+  '9_3'='30%', 
+  '9_4'='95%', 
+  '9_5'='70%',
+  '10_8'='60%')
+
+ggplot(data=shrubislands2, aes(x=rank, y=abs_cover, color=lifeform2, label=lifeform3))+
+  geom_line(color='black', aes(group=year))+
+  scale_color_manual(name='Lifeform', values = c('purple4', 'springgreen4','burlywood4'))+
+  geom_text_repel(color='black')+
+  geom_point(size=2, aes(shape=as.factor(year)))+
+  scale_shape_manual(name='Year', values=c(15,16,17))+
+  facet_wrap(~key3, labeller=labeller(key3=facetlabels2), ncol=1)+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = 'top')+
+  ylab("Cover")+
+  xlab('Rank')
+
+ggplot(data=shrubislands2, aes(x=rank, y=abs_cover, color=lifeform5, label=lifeform4))+
+  geom_line(color='black', aes(group=year))+
+  scale_color_manual(name='Lifeform', values = c('purple','pink',  'green','springgreen4','burlywood4'))+
+  geom_text(size=3, color='black',nudge_x = 8 )+
+  #geom_text_repel(color='black')+
+  geom_point(size=3)+
+  facet_grid(key3~year, labeller=labeller(key3=facetlabels2))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = 'top')+
+  ylab("Cover")+
+  xlab('Rank')
+
 ###compare with grass communities
 grassyplots<-spcomp_all %>% 
   filter(year!=2018, X2022.data=="yes", cover=="G", abs_cover>0) %>% 
