@@ -295,7 +295,7 @@ write.csv(spcomp_all, "species_compositon_allyears.csv" )
 ##also are only doing this for the 7 transects that we have all years of data for
 
 spcomp_all<-read.csv('species_compositon_allyears.csv') %>% 
-  mutate(shrubsp2=ifelse(shrubSP=="", 'Grassy plot', shrubSP))
+  mutate(shrubsp2=ifelse(shrubSP=="", 'Grass dominated', shrubSP))
 
 
 #running each plot separate
@@ -403,7 +403,7 @@ a
 
 spcomp_all2<-spcomp_all %>% 
   filter(year!=2018, X2022.data=="yes") %>% 
-  filter(shrubsp2 %in% c('Grassy plot', 'Cornus', 'Rhus glabra')) %>% 
+  filter(shrubsp2 %in% c('Grass dominated', 'Cornus', 'Rhus glabra')) %>% 
   group_by(year, transect, cover, shrubsp2) %>%
   mutate(plotid=paste(transect, plot, sep="_"),
          trtid=paste(transect, cover, shrubsp2, sep="_")) %>% 
@@ -430,7 +430,7 @@ b<-ggplot(data=cent_changeplot, aes(x=type, y=change))+
   geom_bar(stat="identity")+
   geom_errorbar(aes(ymin=change-ci, ymax=change+ci), width=0.1, position=position_dodge())+
   theme_bw()+
-  scale_x_discrete(limits=c('Grassy plot', 'Cornus', 'Rhus glabra'))+
+  scale_x_discrete(limits=c('Grass dominated', 'Cornus', 'Rhus glabra'))+
   annotate('text', x=1, y=0.4, size=5, label="B")+
   annotate('text', x=2, y=0.7, size=5, label="A")+
   annotate('text', x=3, y=0.5, size=5, label="AB")+
