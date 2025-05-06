@@ -347,17 +347,17 @@ mds_means <- mds_scores %>%
 a<-ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, shape=as.factor(year),label=transect, color=shrubsp2)) +
   #geom_errorbarh(aes(xmin=NMDS1_mean-NMDS1_sterr,xmax=NMDS1_mean+NMDS1_sterr), height=0, size=0.5) +
   #geom_errorbar(aes(ymin=NMDS2_mean-NMDS2_sterr,ymax=NMDS2_mean+NMDS2_sterr), width=0, size=0.5) +
-  scale_color_manual(name ="Plot type", values=c("gold2", 'lightsalmon4','green4', 'darkorange', 'tomato3', 'wheat2'))+
+  scale_color_manual(name ="Plot type", values=c("gold2", 'lightsalmon4','green4', 'darkorange', 'tomato3', 'wheat2'),labels=c('C. drummondii', 'C. drummondii, Z. americanum', 'Grass dominated', 'P. americana', 'R. aromatica', 'R. glabra'))+
   scale_shape_manual(name="Year", values = c(15,16,17))+
   geom_path(aes(group=group), color="black")+
   geom_point(size=3) +
  # facet_grid(~cover)+
-  geom_text(size=3, nudge_x=0.05, nudge_y=0.05, col="black") +
+ # geom_text(size=3, nudge_x=0.05, nudge_y=0.05, col="black") +
   theme_bw() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
   xlab("NMDS1")+
   ylab("NMDS2")+
-  ggtitle("A")
+  annotate('text', x=-1, y=1.3, label= '(a)', size=4)
 a
 # ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, col=cover, shape=as.factor(year),
 #                       xmin=NMDS1_mean-NMDS1_sterr,xmax=NMDS1_mean+NMDS1_sterr,
@@ -430,14 +430,14 @@ b<-ggplot(data=cent_changeplot, aes(x=type, y=change))+
   geom_bar(stat="identity")+
   geom_errorbar(aes(ymin=change-ci, ymax=change+ci), width=0.1, position=position_dodge())+
   theme_bw()+
-  scale_x_discrete(limits=c('Grass dominated', 'Cornus', 'Rhus glabra'))+
-  annotate('text', x=1, y=0.4, size=5, label="B")+
-  annotate('text', x=2, y=0.7, size=5, label="A")+
-  annotate('text', x=3, y=0.5, size=5, label="AB")+
+  scale_x_discrete(limits=c('Grass dominated', 'Cornus', 'Rhus glabra'), labels=c('Grass dominated', 'C. drummondii', 'R. glabra'))+
+  annotate('text', x=1, y=0.35, size=4, label="b")+
+  annotate('text', x=2, y=0.7, size=4, label="a")+
+  annotate('text', x=3, y=0.5, size=4, label="ab")+
   xlab('Plot type')+
   ylab('Change in centroid')+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
-  ggtitle("B")
+  annotate('text', x=0.5, y=0.9, label= '(b)', size=4)
 b
 grid.arrange(a,b)
 
