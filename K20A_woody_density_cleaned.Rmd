@@ -1,0 +1,532 @@
+---
+title: "K20A Woody plant density"
+output: html_notebook
+---
+
+Install and load R packages
+```{r}
+#install.packages("packman")
+pacman::p_load(tidyverse, plotrix, grid, ggpubr, car, lme4, lmerTest, emmeans, DHARMa, install = TRUE, update = getOption("pac_update"))
+
+```
+
+Prepping dataset for figure creation and statistical analyses.
+
+Read in csv data
+```{r}
+k20a_woody_density <- read.csv('please read in csv from the write folder', header = TRUE)
+```
+
+Dealing with dates
+```{r}
+k20a_woody_density$Date_sampled <- as.Date(k20a_woody_density$Date_sampled, format = "%m/%d/%Y")
+k20a_woody_density$Year <- lubridate::year(k20a_woody_density$Date_sampled)
+```
+
+Organizing species data to different functional group levels
+```{r}
+k20a_woody_density <- k20a_woody_density %>% 
+  mutate(Division = if_else(Genus_species == "Juniperus_virginiana", "Gymnosperm", "Angiosperm"),
+         Life_form = case_when(Genus_species %in% c("Acer_negundo", "Cercis_canadensis", "Gleditsia_triacanthos", "Juniperus_virginiana", "Ulmus_americana", "Ulmus_pumila") ~ "Tree",
+                               Genus_species %in% c("Cornus_drummondii", "Prunus_americana", "Rhus_aromatica", "Rhus_glabra", "Zanthoxylum_americanum") ~ "Shrub",
+                               TRUE ~ "Other"),
+         Resprout = case_when(Genus_species %in% c("Acer_negundo", "Amorpha_canescens", "Ceanothus_americanus", "Cercis_canadensis", "Cornus_drummondii", "Gleditsia_triacanthos", "Opuntia_macrorhiza", "Prunus_americana", "Rhus_aromatica", "Rhus_glabra", "Rosa_spp", "Rubus_spp", "Symphoricarpos_orbiculatus", "Toxicodendron_radicans", "Ulmus_americana", "Ulmus_pumila", "Zanthoxylum_americanum") ~ "Resprouter",
+                              TRUE ~ "Non-resprouter"))
+```
+
+
+```{r}
+k20a_woody_density %>% 
+  filter(Life_form == "Shrub") %>% 
+  group_by(Genus_species) %>% 
+  summarise(Count.avg = mean(Count))
+  
+```
+
+Top 5 shrub species
+1. Cornus drummondii (N = 16161)
+2. Prunus americana (N = 3094)
+3. Rhus glabra (N = 2570)
+4. Zanthoxylum americanum (N = 1581)
+5. Rhus aromatica (N = 302)
+
+
+
+###Density Figures
+####Total Shrub Density
+```{r}
+k20a_transect_summary <- k20a_woody_density %>% 
+  filter(Year >= 2019 & Life_form == "Shrub") %>% 
+  group_by(Year, Position, Transect) %>% 
+  summarise(sum_dens = sum(Count)/(100*0.5))
+
+k20a_position_summary <- k20a_transect_summary %>% 
+  group_by(Year, Position) %>% 
+  summarise(Density_avg = mean(sum_dens, na.rm = TRUE),
+            Density_SE = std.error(sum_dens, na.rm = TRUE))
+  
+
+k20a_position_summary$Position <- factor(k20a_position_summary$Position, levels = c("Upland","Slope","Lowland"))  
+
+
+all_shrubs <- ggplot(k20a_position_summary, aes(x=Position, y=Density_avg, fill=as.factor(Year)))+
+  geom_col(position = position_dodge())+
+  geom_errorbar(aes(ymin = Density_avg - Density_SE, ymax = Density_avg + Density_SE), position = position_dodge(width = 0.9), width=.2)+
+  scale_y_continuous(limits = c(0,21.5),
+                     breaks = c(0,4,8,12,16,20),
+                     expand = c(0,0))+
+  scale_fill_grey()+
+  guides(color=guide_legend(title = "Year"))+
+  labs(x = "Topographic Position",
+       y = bquote('Stem Density ('~ m^{-2}~")"))+
+  theme_bw()+
+  theme(axis.title = element_text(size = 18, color = "black", face = "bold"),
+        axis.text = element_text(size = 16, color = "black", face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        #legend.position = c(0.12,0.80),
+        legend.position = "NA",
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12))
+
+ggsave("shrubs_stem_density.png",
+       plot = all_shrubs,
+       width = 12,
+       height = 8,
+       units = "in",
+       dpi = 300,
+       device = "png")
+```
+
+
+####Cornus drummondii density
+```{r}
+codr_transect_summary <- k20a_woody_density %>% 
+  filter(Year >= 2019 & Genus_species == "Cornus_drummondii" ) %>% 
+  group_by(Year, Position, Transect) %>% 
+  summarise(TDensity_avg = mean(Density_m2, na.rm = TRUE))
+
+
+codr_position_summary <- codr_transect_summary %>% 
+  group_by(Year, Position) %>% 
+  summarise(Density_avg = mean(TDensity_avg, na.rm = TRUE),
+            Density_SE = std.error(TDensity_avg, na.rm = TRUE))
+
+
+codr_position_summary$Position <- factor(codr_position_summary$Position, levels = c("Upland","Slope","Lowland"))  
+
+codr <- ggplot(codr_position_summary, aes(x=Position, y=Density_avg, fill=as.factor(Year)))+
+  geom_col(position = position_dodge())+
+  geom_errorbar(aes(ymin = Density_avg - Density_SE, ymax = Density_avg + Density_SE), position = position_dodge(width = 0.9), width=.2)+
+  scale_y_continuous(limits = c(0,16.5),
+                     breaks = c(0,3,6,9,12,15),
+                     expand = c(0,0))+
+  scale_fill_grey()+
+  labs(x = "Topographic Position",
+       y = bquote('Stem Density ('~ m^{-2}~")"))+
+  guides(color=guide_legend(title = "Year"))+
+  theme_bw()+
+  theme(axis.title = element_text(size = 18, color = "black", face = "bold"),
+        axis.text = element_text(size = 16, color = "black", face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "NA")
+
+
+ggsave("codr_stem_density.png",
+       plot = codr,
+       width = 12,
+       height = 8,
+       units = "in",
+       dpi = 300,
+       device = "png")
+```
+
+
+####Prunus americana density
+```{r}
+pram_transect_summary <- k20a_woody_density %>% 
+  filter(Year >= 2019 & Genus_species == "Prunus_americana" ) %>% 
+  group_by(Year, Position, Transect) %>% 
+  summarise(TDensity_avg = mean(Density_m2, na.rm = TRUE))
+
+
+pram_position_summary <- pram_transect_summary %>% 
+  group_by(Year, Position) %>% 
+  summarise(Density_avg = mean(TDensity_avg, na.rm = TRUE),
+            Density_SE = std.error(TDensity_avg, na.rm = TRUE))
+
+
+pram_position_summary$Position <- factor(pram_position_summary$Position, levels = c("Upland","Slope","Lowland"))  
+
+
+pram <- ggplot(pram_position_summary, aes(x=Position, y=Density_avg, fill=as.factor(Year)))+
+  geom_col(position = position_dodge())+
+  geom_errorbar(aes(ymin = Density_avg - Density_SE, ymax = Density_avg + Density_SE), position = position_dodge(width = 0.9), width=.2)+
+  scale_y_continuous(limits = c(0,10.5),
+                     breaks = c(0,2,4,6,8,10),
+                     expand = c(0,0))+
+  scale_fill_grey()+
+  labs(x = "Topographic Position",
+       y = bquote('Stem Density ('~ m^{-2}~")"))+
+  guides(color=guide_legend(title = "Year"))+
+  theme_bw()+
+  theme(axis.title = element_text(size = 18, color = "black", face = "bold"),
+        axis.text = element_text(size = 16, color = "black", face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "NA")
+
+ggsave("pram_stem_density.png",
+       plot = pram,
+       width = 12,
+       height = 8,
+       units = "in",
+       dpi = 300,
+       device = "png")
+```
+
+
+####Rhus aromatica density
+```{r}
+rhar_transect_summary <- k20a_woody_density %>% 
+  filter(Year >= 2019 & Genus_species == "Rhus_aromatica" ) %>% 
+  group_by(Year, Position, Transect) %>% 
+  summarise(TDensity_avg = mean(Density_m2, na.rm = TRUE))
+
+
+rhar_position_summary <- rhar_transect_summary %>% 
+  group_by(Year, Position) %>% 
+  summarise(Density_avg = mean(TDensity_avg, na.rm = TRUE),
+            Density_SE = std.error(TDensity_avg, na.rm = TRUE))
+
+
+rhar_position_summary$Position <- factor(rhar_position_summary$Position, levels = c("Upland","Slope","Lowland"))  
+
+
+rhar <- ggplot(rhar_position_summary, aes(x=Position, y=Density_avg, fill=as.factor(Year)))+
+  geom_col(position = position_dodge())+
+  geom_errorbar(aes(ymin = Density_avg - Density_SE, ymax = Density_avg + Density_SE), position = position_dodge(width = 0.9), width=.2)+
+  scale_y_continuous(limits = c(0,0.35),
+                     breaks = c(0,0.1,0.2,0.3),
+                     expand = c(0,0))+
+  scale_fill_grey()+
+  labs(x = "Topographic Position",
+       y = bquote('Stem Density ('~ m^{-2}~")"))+
+  guides(color=guide_legend(title = "Year"))+
+  theme_bw()+
+  theme(axis.title = element_text(size = 18, color = "black", face = "bold"),
+        axis.text = element_text(size = 16, color = "black", face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "NA")
+
+ggsave("rhar_stem_density.png",
+       plot = rhar,
+       width = 12,
+       height = 8,
+       units = "in",
+       dpi = 300,
+       device = "png")
+```
+
+
+####Rhus glabra density
+```{r}
+rhgl_transect_summary <- k20a_woody_density %>% 
+  filter(Year >= 2019 & Genus_species == "Rhus_glabra" ) %>% 
+  group_by(Year, Position, Transect) %>% 
+  summarise(TDensity_avg = mean(Density_m2, na.rm = TRUE))
+
+
+rhgl_position_summary <- rhgl_transect_summary %>% 
+  group_by(Year, Position) %>% 
+  summarise(Density_avg = mean(TDensity_avg, na.rm = TRUE),
+            Density_SE = std.error(TDensity_avg, na.rm = TRUE))
+
+
+rhgl_position_summary$Position <- factor(rhgl_position_summary$Position, levels = c("Upland","Slope","Lowland"))  
+
+
+rhgl <- ggplot(rhgl_position_summary, aes(x=Position, y=Density_avg, fill=as.factor(Year)))+
+  geom_col(position = position_dodge())+
+  geom_errorbar(aes(ymin = Density_avg - Density_SE, ymax = Density_avg + Density_SE), position = position_dodge(width = 0.9), width=.2)+
+  scale_y_continuous(limits = c(0,3.5),
+                     breaks = c(0,1,2,3),
+                     expand = c(0,0))+
+  scale_fill_grey()+
+  labs(x = "Topographic Position",
+       y = bquote('Stem Density ('~ m^{-2}~")"))+
+  guides(color=guide_legend(title = "Year"))+
+  theme_bw()+
+  theme(axis.title = element_text(size = 18, color = "black", face = "bold"),
+        axis.text = element_text(size = 16, color = "black", face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "NA")
+
+ggsave("rhgl_stem_density.png",
+       plot = rhgl,
+       width = 12,
+       height = 8,
+       units = "in",
+       dpi = 300,
+       device = "png")
+```
+
+
+####Zanthoxylum americanum density
+```{r}
+zaam_transect_summary <- k20a_woody_density %>% 
+  filter(Year >= 2019 & Genus_species == "Zanthoxylum_americanum" ) %>% 
+  group_by(Year, Position, Transect) %>% 
+  summarise(TDensity_avg = mean(Density_m2, na.rm = TRUE))
+
+
+zaam_position_summary <- zaam_transect_summary %>% 
+  group_by(Year, Position) %>% 
+  summarise(Density_avg = mean(TDensity_avg, na.rm = TRUE),
+            Density_SE = std.error(TDensity_avg, na.rm = TRUE))
+
+
+zaam_position_summary$Position <- factor(zaam_position_summary$Position, levels = c("Upland","Slope","Lowland"))  
+
+
+zaam <- ggplot(zaam_position_summary, aes(x=Position, y=Density_avg, fill=as.factor(Year)))+
+ geom_col(position = position_dodge())+
+  geom_errorbar(aes(ymin = Density_avg - Density_SE, ymax = Density_avg + Density_SE), position = position_dodge(width = 0.9), width=.2)+
+  scale_y_continuous(limits = c(0,4.5),
+                     breaks = c(0,1,2,3,4),
+                     expand = c(0,0))+
+  scale_fill_grey()+
+  labs(x = "Topographic Position",
+       y = bquote('Stem Density ('~ m^{-2}~")"))+
+  guides(color=guide_legend(title = "Year"))+
+  theme_bw()+
+  theme(axis.title = element_text(size = 18, color = "black", face = "bold"),
+        axis.text = element_text(size = 16, color = "black", face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "NA")
+
+ggsave("zaam_stem_density.png",
+       plot = zaam,
+       width = 12,
+       height = 8,
+       units = "in",
+       dpi = 300,
+       device = "png")
+```
+
+
+Organize all figures into one image with several panels.
+```{r}
+stem_density <- ggarrange(all_shrubs, codr, pram, rhar, rhgl, zaam,
+          ncol = 2, nrow = 3, align = "hv",
+          common.legend = TRUE)
+
+
+ggsave("stem_density.png",
+       plot = stem_density,
+       width = 12,
+       height = 12,
+       units = "in",
+       dpi = 300,
+       device = "png")
+```
+
+
+##Shrub Density Stats
+Using shrub ramet/stem densities the first year following all cutting treatments.
+```{r}
+k20a_woody_density_2019to2021 <- k20a_woody_density %>% 
+  filter(Year >= 2019)
+```
+
+
+Analyze top 5 species together
+```{r}
+hist(k20a_transect_summary$sum_dens)
+hist(log(k20a_transect_summary$sum_dens))#Best transformation
+
+woody_den_lmer <- lmer(log(sum_dens) ~ as.factor(Year) * Position + (1|Transect),
+                       data = k20a_transect_summary, REML = TRUE)
+
+#Test model assumptions
+woody_lmer_resid <- simulateResiduals(woody_den_lmer)
+plot(woody_lmer_resid)
+
+anova(woody_den_lmer, type = 3, ddf = "Kenward-Roger")
+print(summary(woody_den_lmer, type=3, test.statistic = "F",ddf = "Kenward-Roger"))
+emmeans(woody_den_lmer, pairwise ~ Position|Year, adjust = "sidak", type = "response")
+emmeans(woody_den_lmer, pairwise ~ Year|Position, adjust = "sidak", type = "response")
+
+```
+
+Analyze only Cornus drummondii
+```{r}
+codr <- k20a_woody_density_2019to2021[k20a_woody_density_2019to2021$Genus_species=="Cornus_drummondii",]
+
+hist(codr$Density_m2)
+hist(log(codr$Density_m2))
+hist(sqrt(codr$Density_m2))#Best transformation
+
+codr_dens_lmer <- lmer(sqrt(Density_m2) ~ as.factor(Year) * Position + (1|Transect),
+                      data = codr, REML = TRUE)
+
+#Test model assumptions
+codr_dens_resid <- simulateResiduals(codr_dens_lmer)
+plot(codr_dens_resid)
+
+anova(codr_dens_lmer, type = 3, ddf = "Kenward-Roger")
+print(summary(codr_dens_lmer, type=3, test.statistic = "F",ddf = "Kenward-Roger"))
+emmeans(codr_dens_lmer, pairwise ~ Position|Year, adjust = "sidak", type = "response")
+emmeans(codr_dens_lmer, pairwise ~ Year|Position, adjust = "sidak", type = "response")
+
+```
+
+Analyze only Prunus americana
+```{r}
+pram <- k20a_woody_density_2019to2021[k20a_woody_density_2019to2021$Genus_species=="Prunus_americana",]
+
+hist(pram$Density_m2)
+hist(log(pram$Density_m2))#best transformation
+hist(sqrt(pram$Density_m2))
+
+pram_dens_lmer <- lmer(sqrt(Density_m2) ~ as.factor(Year) * Position + (1|Transect),
+                      data = pram, REML = TRUE)
+
+#Test model assumptions
+pram_dens_resid <- simulateResiduals(pram_dens_lmer)
+plot(pram_dens_resid)
+
+anova(pram_dens_lmer, type = 3, ddf = "Kenward-Roger")
+print(summary(pram_dens_lmer, type=3, test.statistic = "F",ddf = "Kenward-Roger"))
+```
+
+
+Analyze only Rhus aromatica
+```{r}
+rhar <- k20a_woody_density_2019to2021[k20a_woody_density_2019to2021$Genus_species=="Rhus_aromatica",]
+
+hist(rhar$Density_m2)
+hist(log(rhar$Density_m2))#best transformation
+hist(sqrt(rhar$Density_m2))
+
+rhar_dens_lmer <- lmer(sqrt(Density_m2) ~ as.factor(Year) * Position + (1|Transect),
+                      data = rhar, REML=TRUE)
+
+#Test model assumptions
+rhar_dens_resid <- simulateResiduals(rhar_dens_lmer)
+plot(rhar_dens_resid)
+
+anova(rhar_dens_lmer, type = 3, ddf = "Kenward-Roger")
+print(summary(rhar_dens_lmer, type=3, test.statistic = "F",ddf = "Kenward-Roger"))
+```
+
+
+Analyze only Rhus glabra
+```{r}
+
+rhgl <- k20a_woody_density_2019to2021[k20a_woody_density_2019to2021$Genus_species=="Rhus_glabra",]
+
+hist(rhgl$Density_m2)
+hist(log(rhgl$Density_m2))#best transformation
+hist(sqrt(rhgl$Density_m2))
+
+rhgl_dens_lmer <- lmer(sqrt(Density_m2) ~ as.factor(Year) * Position + (1|Transect),
+                      data = rhgl, REML=TRUE)
+
+#Test model assumptions
+rhgl_dens_resid <- simulateResiduals(rhgl_dens_lmer)
+plot(rhgl_dens_resid)
+
+anova(rhgl_dens_lmer, type = 3, ddf = "Kenward-Roger")
+print(summary(rhgl_dens_lmer, type=3, test.statistic = "F",ddf = "Kenward-Roger"))
+```
+
+Analyze only Zanthoxylum americanum
+```{r}
+zaam <- k20a_woody_density_2019to2021[k20a_woody_density_2019to2021$Genus_species=="Zanthoxylum_americanum",]
+
+hist(zaam$Density_m2)
+hist(log(zaam$Density_m2))#Best transformation
+hist(sqrt(zaam$Density_m2))
+
+zaam_dens_lmer <- lmer(sqrt(Density_m2) ~ as.factor(Year) * Position + (1|Transect),
+                      data = zaam, REML = TRUE)
+
+#Test model assumptions
+zaam_dens_resid <- simulateResiduals(zaam_dens_lmer)
+plot(zaam_dens_resid)
+
+anova(zaam_dens_lmer, type = 3, ddf = "Kenward-Roger")
+print(summary(zaam_dens_lmer, type=3, test.statistic = "F",ddf = "Kenward-Roger"))
+```
+
+
+
+####Tree and Shrub cover change using Rangeland Analysis Platform (RAP) data for K20A
+```{r}
+RAP <- read.csv('Remember to call in the data file from your folder')
+```
+
+
+Plotting tree data from RAP by landscape position
+```{r}
+RAP_tree <- 
+ggplot(data = RAP)+
+  geom_rect(aes(xmin = 2017, xmax = 2018.5, ymin = 0, ymax = 50))+
+  geom_point(aes(x=year, y=TRE, color=Location), size=2.5)+
+  geom_line(aes(x=year, y=TRE, color=Location), linewidth=1.5)+
+  scale_x_continuous(breaks = c(1986:2021),
+                     limits = c(1986,2021),
+                     expand = c(0,0))+
+  labs(x = "Year",
+       y = "Tree Cover (%)")+
+  scale_y_continuous(limits = c(0,50),
+                     breaks = c(0,10,20,30,40,50),
+                     expand = c(0,0))+
+  scale_color_manual(values = c("#1A80D9","#F2AB27","#030A8C"))+
+  guides(color=guide_legend(title = "Landscape Position"))+
+  #geom_vline(xintercept = 2018, color="black")+
+  theme_bw()+
+  theme(axis.title = element_text(size = 18, color = "black", face = "bold"),
+        axis.text.x = element_text(size = 14, color = "black", face = "bold", angle=45, hjust = 1),
+        axis.text.y = element_text(size = 14, color = "black", face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = c(0.15,0.85),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12))
+
+ggsave("k20a_tree_cover.png",
+       plot = RAP_tree,
+       height = 8, width = 12, units = "in",
+       device = "png",
+       dpi = 300)
+```
+
+
+Basic linear regression analysis for RAP tree cover.
+```{r}
+tree.lm <- lm(TRE~year*Location, RAP)
+
+plot(tree.lm)#data meets assumptions
+
+summary(tree.lm)
+```
+Releveling linear regression model to look at all variable significance.
+```{r}
+RAP_re <- RAP %>% 
+  mutate(Location = Location %>% 
+           fct_relevel("Upland"))
+
+tree.lm.reorder <- lm(TRE~year*Location, data=RAP_re)
+
+plot(tree.lm.reorder)
+
+summary(tree.lm.reorder)
+```
+
+
