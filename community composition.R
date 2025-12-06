@@ -16,6 +16,7 @@ library(ggrepel)
 library(lme4)
 library(lmerTest)
 library(emmeans)
+library(ggtext)
 
 theme_set(theme_bw(12))
 
@@ -347,14 +348,14 @@ mds_means <- mds_scores %>%
 a<-ggplot(mds_means, aes(x=NMDS1_mean, y=NMDS2_mean, shape=as.factor(year),label=transect, color=shrubsp2)) +
   #geom_errorbarh(aes(xmin=NMDS1_mean-NMDS1_sterr,xmax=NMDS1_mean+NMDS1_sterr), height=0, size=0.5) +
   #geom_errorbar(aes(ymin=NMDS2_mean-NMDS2_sterr,ymax=NMDS2_mean+NMDS2_sterr), width=0, size=0.5) +
-  scale_color_manual(name ="Plot type", values=c("gold2", 'lightsalmon4','green4', 'darkorange', 'tomato3', 'wheat2'),labels=c('C. drummondii', 'C. drummondii, Z. americanum', 'Grass dominated', 'P. americana', 'R. aromatica', 'R. glabra'))+
+  scale_color_manual(name ="Plot type", values=c("gold2", 'lightsalmon4','green4', 'darkorange', 'tomato3', 'wheat2'),labels=c('<i>C. drummondii<i>', '<i>C. drummondii<i>, <i>Z. americanum <i>', 'Grass dominated', '<i>P. americana<i>', '<i>R. aromatica<i>', '<i>R. glabra<i>'))+
   scale_shape_manual(name="Year", values = c(15,16,17))+
   geom_path(aes(group=group), color="black")+
   geom_point(size=3) +
  # facet_grid(~cover)+
  # geom_text(size=3, nudge_x=0.05, nudge_y=0.05, col="black") +
   theme_bw() +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.text = ggtext::element_markdown())+
   xlab("NMDS1")+
   ylab("NMDS2")+
   annotate('text', x=-1, y=1.3, label= '(a)', size=4)
@@ -430,16 +431,18 @@ b<-ggplot(data=cent_changeplot, aes(x=type, y=change))+
   geom_bar(stat="identity")+
   geom_errorbar(aes(ymin=change-ci, ymax=change+ci), width=0.1, position=position_dodge())+
   theme_bw()+
-  scale_x_discrete(limits=c('Grass dominated', 'Cornus', 'Rhus glabra'), labels=c('Grass dominated', 'C. drummondii', 'R. glabra'))+
+  scale_x_discrete(limits=c('Grass dominated', 'Cornus', 'Rhus glabra'), labels=c('Grass dominated', '<i>C. drummondii<i>', '<i>R. glabra<i>'))+
   annotate('text', x=1, y=0.35, size=4, label="b")+
   annotate('text', x=2, y=0.7, size=4, label="a")+
   annotate('text', x=3, y=0.5, size=4, label="ab")+
   xlab('Plot type')+
   ylab('Change in centroid')+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),axis.text.x = ggtext::element_markdown())+
   annotate('text', x=0.5, y=0.9, label= '(b)', size=4)
 b
-grid.arrange(a,b)
+fig6<-grid.arrange(a,b)
+
+ggsave('C:\\Users\\mavolio2\\OneDrive - Johns Hopkins\\Manuscripts\\Konza papers\\fig6.jpeg', fig6, units='in', height=7, width=5)
 
 ##across the whole watershed how is dispersion changing?
 cent_change2<-multivariate_change(spcomp_all2, time.var="year", abundance.var="abs_cover", replicate.var="plotid", treatment.var = 'category', species.var="sp_code", reference.time=2018)
@@ -493,11 +496,11 @@ ABCDE
 FG###
 HIJK#"
   
-  
+fig7<-  
 ggplot(data=shrubislands, aes(x=rank, y=abs_cover, color=lifeform2, label=lifeform3))+
   geom_line(color='black', aes(group=year))+
   scale_color_manual(name='Lifeform', values = c('purple4', 'springgreen4','burlywood4'))+
-  geom_text_repel(color='black')+
+  geom_text_repel(color='black', fontface='italic', force = 1)+
   geom_point(size=2, aes(shape=as.factor(year)))+
   scale_shape_manual(name='Year', values=c(15,16,17))+
   facet_manual(vars(key2), labeller=labeller(key2=facetlabels), design=design)+
@@ -505,7 +508,8 @@ ggplot(data=shrubislands, aes(x=rank, y=abs_cover, color=lifeform2, label=lifefo
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = c(0.9, 0.4))+
   ylab("Cover")+
   xlab('Rank')
-
+fig7
+ggsave('C:\\Users\\mavolio2\\OneDrive - Johns Hopkins\\Manuscripts\\Konza papers\\fig7.jpeg', fig7, units='in', height=5, width=9)
 
 ###figure for grant
 shrubislands2<-shrubislands %>% 
